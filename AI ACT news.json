@@ -1,0 +1,168 @@
+{
+  "name": "AI Act News Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "hour": 10
+            }
+          ]
+        },
+        "feedUrl": "https://artificialintelligenceact.eu/feed/"
+      },
+      "type": "n8n-nodes-base.rssFeedReadTrigger",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        -16
+      ],
+      "id": "8e09a2e1-1462-4bdc-9e20-bd42caafb835",
+      "name": "RSS Feed Trigger"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_GROQ_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama-3.1-8b-instant\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Summarise this AI Act article in 3 bullet points (•) in English. Article: {{ $json.cleanContent }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        416,
+        -16
+      ],
+      "id": "0c846b5d-6937-4cb5-9dc1-110fd254bfa7",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $input.item.json[\"content:encoded\"] || \"\";\nconst cleanContent = content\n  .replace(/<[^>]*>/g, '')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nreturn [{\n  json: {\n    cleanContent: cleanContent,\n    titulo: $input.item.json.title || \"\",\n    link: $input.item.json.link || \"\",\n    data: $input.item.json.pubDate || \"\"\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        -16
+      ],
+      "id": "805eb3bf-0585-419b-9cc6-e8cc03711dcf",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "=🔔 New AI Act Article\n\n📰 {{ $node[\"Code in JavaScript\"].json.titulo }}\n\n📅 {{ $node[\"Date & Time\"].json.formattedDate }}\n\n🔗 {{ $node[\"Code in JavaScript\"].json.link }}\n\n📝 Summary:\n{{ $json.choices[0].message.content }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        832,
+        -16
+      ],
+      "id": "dca11eff-8b28-4098-8c72-a33e6b6a6565",
+      "name": "Discord",
+      "webhookId": "YOUR_DISCORD_WEBHOOK_ID",
+      "credentials": {
+        "discordWebhookApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Discord Webhook"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "formatDate",
+        "date": "={{ $node[\"Code in JavaScript\"].json.data }}",
+        "format": "custom",
+        "customFormat": "dd-MM-yyyy",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        416,
+        -160
+      ],
+      "id": "c94484cd-e10c-4e42-b567-2d051c64eced",
+      "name": "Date & Time"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "RSS Feed Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Date & Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date & Time": {
+      "main": [
+        [
+          {
+            "node": "Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
